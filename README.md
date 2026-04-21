@@ -123,14 +123,6 @@ cd trabajo-integrador-digital-money
 cp .env.example .env
 ```
 
-El `.env` contiene valores por defecto que funcionan sin modificación para desarrollo local. Si querés cambiar el secreto JWT o las credenciales del config-server, editalo antes de continuar.
-
-```env
-CONFIG_USER=admin
-CONFIG_PASSWORD=digital2024
-JWT_SECRET=digitalMoneyHouseSecretKeyForJWT2024MustBeLongEnoughForHS256Algorithm
-```
-
 ### 3. Levantar todos los servicios con Docker Compose
 
 ```bash
