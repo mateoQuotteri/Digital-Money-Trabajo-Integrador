@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: account-service
+  config:
+    import: configserver:${CONFIG_SERVER_URI:http://localhost:8888}
+  cloud:
+    config:
+      username: ${CONFIG_SERVER_USERNAME:admin}
+      password: ${CONFIG_SERVER_PASSWORD:digital2024}
+      fail-fast: true
+  profiles:
+    active: default

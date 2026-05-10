@@ -1,0 +1,119 @@
+services:
+
+  # ── 1. Eureka Server (Service Discovery) ──────────────────────────────────
+  eureka-server:
+    build: ./eureka-server
+    image: dmh/eureka-server:latest
+    container_name: eureka-server
+    ports:
+      - "8761:8761"
+    networks:
+      - dmh-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8761/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  # ── 2. Config Server (Configuración centralizada desde GitHub) ────────────
+  config-server:
+    build: ./config-server
+    image: dmh/config-server:latest
+    container_name: config-server
+    ports:
+      - "8888:8888"
+    environment:
+      - CONFIG_USER=${CONFIG_USER:-admin}
+      - CONFIG_PASSWORD=${CONFIG_PASSWORD:-digital2024}
+    networks:
+      - dmh-network
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8888/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    restart: unless-stopped
+
+  # ── 3. User Service ────────────────────────────────────────────────────────
+  user-service:
+    build: ./user-service
+    image: dmh/user-service:latest
+    container_name: user-service
+    ports:
+      - "8081:8081"
+    environment:
+      # Apunta al config-server del compose (no localhost)
+      - CONFIG_SERVER_URI=http://config-server:8888
+      - CONFIG_SERVER_USERNAME=${CONFIG_USER:-admin}
+      - CONFIG_SERVER_PASSWORD=${CONFIG_PASSWORD:-digital2024}
+      # Sobreescribe la URL de Eureka que viene del config repo (apunta a localhost)
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      # Secreto JWT (debe coincidir en todos los servicios)
+      - JWT_SECRET=${JWT_SECRET:-digitalMoneyHouseSecretKeyForJWT2024MustBeLongEnoughForHS256Algorithm}
+    networks:
+      - dmh-network
+    depends_on:
+      config-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 60s
+    restart: unless-stopped
+
+  # ── 4. Account Service ─────────────────────────────────────────────────────
+  account-service:
+    build: ./account-service
+    image: dmh/account-service:latest
+    container_name: account-service
+    ports:
+      - "8082:8082"
+    environment:
+      - CONFIG_SERVER_URI=http://config-server:8888
+      - CONFIG_SERVER_USERNAME=${CONFIG_USER:-admin}
+      - CONFIG_SERVER_PASSWORD=${CONFIG_PASSWORD:-digital2024}
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - JWT_SECRET=${JWT_SECRET:-digitalMoneyHouseSecretKeyForJWT2024MustBeLongEnoughForHS256Algorithm}
+    networks:
+      - dmh-network
+    depends_on:
+      config-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8082/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 60s
+    restart: unless-stopped
+
+  # ── 5. Gateway (punto de entrada único, puerto público) ────────────────────
+  gateway:
+    build: ./gateway
+    image: dmh/gateway:latest
+    container_name: gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - JWT_SECRET=${JWT_SECRET:-digitalMoneyHouseSecretKeyForJWT2024MustBeLongEnoughForHS256Algorithm}
+    networks:
+      - dmh-network
+    depends_on:
+      user-service:
+        condition: service_healthy
+      account-service:
+        condition: service_healthy
+    restart: unless-stopped
+
+networks:
+  dmh-network:
+    driver: bridge

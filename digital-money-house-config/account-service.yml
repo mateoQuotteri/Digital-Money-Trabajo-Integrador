@@ -1,0 +1,97 @@
+# account-service.yml - Configuración centralizada
+
+server:
+  port: 8082
+  error:
+    include-stacktrace: on-param
+    include-message: always
+
+spring:
+  application:
+    name: account-service
+
+  datasource:
+    url: jdbc:h2:mem:accountdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 20000
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: true
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+      settings:
+        web-allow-others: true
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+    registry-fetch-interval-seconds: 30
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
+    lease-renewal-interval-in-seconds: 30
+    lease-expiration-duration-in-seconds: 90
+
+jwt:
+  secret: digitalMoneyHouseSecretKeyForJWT2024MustBeLongEnoughForHS256Algorithm
+  expiration: 86400000
+  issuer: digital-money-house-user-service
+  header: Authorization
+  prefix: Bearer
+
+logging:
+  level:
+    com.example.account_service: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.springframework.web: DEBUG
+    com.netflix.eureka: INFO
+    com.netflix.discovery: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,env
+  endpoint:
+    health:
+      show-details: always
+  info:
+    env:
+      enabled: true
+
+cors:
+  allowed-origins:
+    - http://localhost:3000
+    - http://localhost:4200
+  allowed-methods:
+    - GET
+    - POST
+    - PUT
+    - PATCH
+    - DELETE
+    - OPTIONS
+  allowed-headers:
+    - "*"
+  allow-credentials: true

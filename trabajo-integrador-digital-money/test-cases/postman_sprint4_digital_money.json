@@ -1,0 +1,659 @@
+{
+  "info": {
+    "name": "Digital Money House — Sprint 4",
+    "_postman_id": "sprint4-digital-money-house",
+    "description": "Colección de pruebas para Sprint 4: Transferencia de dinero a CBU/CVU/alias y listado de últimos destinatarios.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url",       "value": "http://localhost:8080", "type": "string" },
+    { "key": "token",          "value": "",                      "type": "string" },
+    { "key": "accountId",      "value": "",                      "type": "string" },
+    { "key": "accountIdB",     "value": "",                      "type": "string" },
+    { "key": "cvuDestino",     "value": "",                      "type": "string" },
+    { "key": "aliasDestino",   "value": "",                      "type": "string" },
+    { "key": "transferenciaId","value": "",                      "type": "string" },
+    { "key": "cardId",         "value": "",                      "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "0 — Setup (Login)",
+      "item": [
+        {
+          "name": "POST /users/login — Usuario A",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.token) {",
+                  "    pm.collectionVariables.set('token', json.token);",
+                  "    console.log('Token guardado:', json.token);",
+                  "}",
+                  "if (json.accountId) {",
+                  "    pm.collectionVariables.set('accountId', json.accountId);",
+                  "    console.log('AccountId guardado:', json.accountId);",
+                  "}",
+                  "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                  "pm.test('Token presente', function() { pm.expect(json.token).to.be.a('string'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"usuarioa@test.com\",\n  \"password\": \"Test1234!\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/users/login", "host": ["{{base_url}}"], "path": ["users", "login"] }
+          }
+        },
+        {
+          "name": "GET /accounts/{id} — Verificar saldo inicial",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                  "var json = pm.response.json();",
+                  "pm.test('Tiene campo saldo', function() { pm.expect(json.saldo).to.exist; });",
+                  "console.log('Saldo inicial de A:', json.saldo);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/accounts/{{accountId}}", "host": ["{{base_url}}"], "path": ["accounts", "{{accountId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "1 — Ingreso de saldo previo (POST /deposits)",
+      "item": [
+        {
+          "name": "POST /accounts/{id}/deposits — Cargar saldo desde tarjeta",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', function() { pm.response.to.have.status(201); });",
+                  "var json = pm.response.json();",
+                  "pm.test('Tipo CREDITO', function() { pm.expect(json.tipo).to.eql('CREDITO'); });",
+                  "pm.test('Monto correcto', function() { pm.expect(json.monto).to.eql(1000); });",
+                  "pm.test('Tiene id', function() { pm.expect(json.id).to.be.a('number'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cardId\": {{cardId}},\n  \"amount\": 1000\n}"
+            },
+            "url": { "raw": "{{base_url}}/accounts/{{accountId}}/deposits", "host": ["{{base_url}}"], "path": ["accounts", "{{accountId}}", "deposits"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2 — GET /transferences — Últimos destinatarios",
+      "item": [
+        {
+          "name": "TC-S4-001 — GET /transferences — Lista vacía (antes de transferir)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                  "var json = pm.response.json();",
+                  "pm.test('Respuesta es array', function() { pm.expect(json).to.be.an('array'); });",
+                  "pm.test('Lista vacía o con datos previos', function() { pm.expect(json.length).to.be.at.least(0); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/accounts/{{accountId}}/transferences", "host": ["{{base_url}}"], "path": ["accounts", "{{accountId}}", "transferences"] }
+          }
+        },
+        {
+          "name": "TC-S4-003 — GET /transferences — Cuenta ajena (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 403 Forbidden', function() { pm.response.to.have.status(403); });",
+                  "var json = pm.response.json();",
+                  "pm.test('Mensaje de error presente', function() { pm.expect(json.error).to.be.a('string'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/accounts/{{accountIdB}}/transferences", "host": ["{{base_url}}"], "path": ["accounts", "{{accountIdB}}", "transferences"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3 — POST /transferences — Realizar transferencia (happy paths)",
+      "item": [
+        {
+          "name": "TC-S4-007 — POST /transferences — Transferencia exitosa por CVU",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', function() { pm.response.to.have.status(200); });",
+                  "var json = pm.response.json();",
+                  "pm.test('Tipo DEBITO', function() { pm.expect(json.tipo).to.eql('DEBITO'); });",
+                  "pm.test('Monto correcto', function() { pm.expect(json.monto).to.eql(300); });",
+                  "pm.test('Tiene id', function() { pm.expect(json.id).to.be.a('number'); });",
+                  "pm.test('Tiene descripcion', function() { pm.expect(json.descripcion).to.be.a('string'); });",
+                  "pm.test('Tiene fecha', function() { pm.expect(json.fecha).to.exist; });",
+                  "if (json.id) { pm.collectionVariables.set('transferenciaId', json.id); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"destination\": \"{{cvuDestino}}\",\n  \"amount\": 300\n}"
+            },
+            "url": { "raw": "{{base_url}}/accounts/{{accountId}}/transferences", "host": ["{{base_url}}"], "path": ["accounts", "{{accountId}}", "transferences"] }
+          }
+        },
+        {
+          "name": "TC-S4-008 — POST /transferences — Transferencia exitosa por alias",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', function() { pm.response.to.have.status(200); });",
+                  "var json = pm.response.json();",
+                  "pm.test('Tipo DEBITO', function() { pm.expect(json.tipo).to.eql('DEBITO'); });",
+                  "pm.test('Monto correcto', function() { pm.expect(json.monto).to.eql(100); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"destination\": \"{{aliasDestino}}\",\n  \"amount\": 100\n}"
+            },
+            "url": { "raw": "{{base_url}}/accounts/{{accountId}}/transferences", "host": ["{{base_url}}"], "path": ["accounts", "{{accountId}}", "transferences"] }
+          }
+        },
+        {
+          "name": "TC-S4-009 — GET /accounts/{idB} — Verificar crédito en cuenta destino",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                  "var json = pm.response.json();",
+                  "pm.test('Saldo de B es mayor que 0', function() { pm.expect(parseFloat(json.saldo)).to.be.greaterThan(0); });",
+                  "console.log('Saldo de B después de recibir transferencia:', json.saldo);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/accounts/{{accountIdB}}", "host": ["{{base_url}}"], "path": ["accounts", "{{accountIdB}}"] }
+          }
+        },
+        {
+          "name": "TC-S4-010 — GET /activity — Transferencia aparece como DEBITO",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                  "var json = pm.response.json();",
+                  "pm.test('Array no vacío', function() { pm.expect(json.length).to.be.greaterThan(0); });",
+                  "pm.test('Primer elemento es DEBITO', function() { pm.expect(json[0].tipo).to.eql('DEBITO'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/accounts/{{accountId}}/activity", "host": ["{{base_url}}"], "path": ["accounts", "{{accountId}}", "activity"] }
+          }
+        },
+        {
+          "name": "TC-S4-011 — GET /transferences — Destinatario aparece tras transferir",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                  "var json = pm.response.json();",
+                  "pm.test('Lista no vacía', function() { pm.expect(json.length).to.be.greaterThan(0); });",
+                  "pm.test('Tiene campo cbuCvuAlias', function() { pm.expect(json[0].cbuCvuAlias).to.be.a('string'); });",
+                  "pm.test('Tiene campo monto', function() { pm.expect(json[0].monto).to.exist; });",
+                  "pm.test('Tiene campo fecha', function() { pm.expect(json[0].fecha).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/accounts/{{accountId}}/transferences", "host": ["{{base_url}}"], "path": ["accounts", "{{accountId}}", "transferences"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4 — POST /transferences — Errores y validaciones",
+      "item": [
+        {
+          "name": "TC-S4-012 — Cuenta destino inexistente (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400 Bad Request', function() { pm.response.to.have.status(400); });",
+                  "var json = pm.response.json();",
+                  "pm.test('Mensaje de error presente', function() { pm.expect(json.error).to.be.a('string'); });",
+                  "pm.test('Mensaje menciona cuenta no encontrada', function() { pm.expect(json.error).to.include('no encontrada'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"destination\": \"0000000000000000000000\",\n  \"amount\": 100\n}"
+            },
+            "url": { "raw": "{{base_url}}/accounts/{{accountId}}/transferences", "host": ["{{base_url}}"], "path": ["accounts", "{{accountId}}", "transferences"] }
+          }
+        },
+        {
+          "name": "TC-S4-013 — Fondos insuficientes (410)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 410 Gone', function() { pm.response.to.have.status(410); });",
+                  "var json = pm.response.json();",
+                  "pm.test('Mensaje de error presente', function() { pm.expect(json.error).to.be.a('string'); });",
+                  "pm.test('Mensaje menciona fondos insuficientes', function() { pm.expect(json.error.toLowerCase()).to.include('insuficiente'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"destination\": \"{{cvuDestino}}\",\n  \"amount\": 999999.99\n}"
+            },
+            "url": { "raw": "{{base_url}}/accounts/{{accountId}}/transferences", "host": ["{{base_url}}"], "path": ["accounts", "{{accountId}}", "transferences"] }
+          }
+        },
+        {
+          "name": "TC-S4-014 — Monto cero (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400 Bad Request', function() { pm.response.to.have.status(400); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"destination\": \"{{cvuDestino}}\",\n  \"amount\": 0\n}"
+            },
+            "url": { "raw": "{{base_url}}/accounts/{{accountId}}/transferences", "host": ["{{base_url}}"], "path": ["accounts", "{{accountId}}", "transferences"] }
+          }
+        },
+        {
+          "name": "TC-S4-015 — Monto negativo (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400 Bad Request', function() { pm.response.to.have.status(400); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"destination\": \"{{cvuDestino}}\",\n  \"amount\": -100\n}"
+            },
+            "url": { "raw": "{{base_url}}/accounts/{{accountId}}/transferences", "host": ["{{base_url}}"], "path": ["accounts", "{{accountId}}", "transferences"] }
+          }
+        },
+        {
+          "name": "TC-S4-016 — Sin campo destination (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400 Bad Request', function() { pm.response.to.have.status(400); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 100\n}"
+            },
+            "url": { "raw": "{{base_url}}/accounts/{{accountId}}/transferences", "host": ["{{base_url}}"], "path": ["accounts", "{{accountId}}", "transferences"] }
+          }
+        },
+        {
+          "name": "TC-S4-017 — Sin campo amount (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400 Bad Request', function() { pm.response.to.have.status(400); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"destination\": \"{{cvuDestino}}\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/accounts/{{accountId}}/transferences", "host": ["{{base_url}}"], "path": ["accounts", "{{accountId}}", "transferences"] }
+          }
+        },
+        {
+          "name": "TC-S4-018 — Body vacío (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400 Bad Request', function() { pm.response.to.have.status(400); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": { "raw": "{{base_url}}/accounts/{{accountId}}/transferences", "host": ["{{base_url}}"], "path": ["accounts", "{{accountId}}", "transferences"] }
+          }
+        },
+        {
+          "name": "TC-S4-019 — Auto-transferencia (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400 Bad Request', function() { pm.response.to.have.status(400); });",
+                  "var json = pm.response.json();",
+                  "pm.test('Mensaje de auto-transferencia', function() { pm.expect(json.error.toLowerCase()).to.include('vos mismo'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"destination\": \"<reemplazar con el CVU propio de A>\",\n  \"amount\": 100\n}"
+            },
+            "url": { "raw": "{{base_url}}/accounts/{{accountId}}/transferences", "host": ["{{base_url}}"], "path": ["accounts", "{{accountId}}", "transferences"] }
+          }
+        },
+        {
+          "name": "TC-S4-020 — Transferir desde cuenta ajena (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 403 Forbidden', function() { pm.response.to.have.status(403); });",
+                  "var json = pm.response.json();",
+                  "pm.test('Mensaje de error presente', function() { pm.expect(json.error).to.be.a('string'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"destination\": \"{{cvuDestino}}\",\n  \"amount\": 100\n}"
+            },
+            "url": { "raw": "{{base_url}}/accounts/{{accountIdB}}/transferences", "host": ["{{base_url}}"], "path": ["accounts", "{{accountIdB}}", "transferences"] }
+          }
+        },
+        {
+          "name": "TC-S4-021 — Sin token (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401 Unauthorized', function() { pm.response.to.have.status(401); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"destination\": \"{{cvuDestino}}\",\n  \"amount\": 100\n}"
+            },
+            "url": { "raw": "{{base_url}}/accounts/{{accountId}}/transferences", "host": ["{{base_url}}"], "path": ["accounts", "{{accountId}}", "transferences"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5 — Verificación de saldo post-transferencia",
+      "item": [
+        {
+          "name": "GET /accounts/{id} — Verificar saldo final de A",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                  "var json = pm.response.json();",
+                  "pm.test('Saldo reducido (debe ser menor al inicial de 1000)', function() {",
+                  "    pm.expect(parseFloat(json.saldo)).to.be.lessThan(1000);",
+                  "});",
+                  "console.log('Saldo final de A:', json.saldo);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/accounts/{{accountId}}", "host": ["{{base_url}}"], "path": ["accounts", "{{accountId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6 — Mantenimiento: Ingreso por tarjeta en /deposits",
+      "item": [
+        {
+          "name": "TC-S4-024 — POST /deposits — Ingreso exitoso (201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 Created', function() { pm.response.to.have.status(201); });",
+                  "var json = pm.response.json();",
+                  "pm.test('Tipo CREDITO', function() { pm.expect(json.tipo).to.eql('CREDITO'); });",
+                  "pm.test('Tiene id', function() { pm.expect(json.id).to.be.a('number'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cardId\": {{cardId}},\n  \"amount\": 200\n}"
+            },
+            "url": { "raw": "{{base_url}}/accounts/{{accountId}}/deposits", "host": ["{{base_url}}"], "path": ["accounts", "{{accountId}}", "deposits"] }
+          }
+        },
+        {
+          "name": "TC-S4-025 — POST /deposits — Cuenta ajena (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 403 Forbidden', function() { pm.response.to.have.status(403); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cardId\": {{cardId}},\n  \"amount\": 100\n}"
+            },
+            "url": { "raw": "{{base_url}}/accounts/{{accountIdB}}/deposits", "host": ["{{base_url}}"], "path": ["accounts", "{{accountIdB}}", "deposits"] }
+          }
+        }
+      ]
+    }
+  ]
+}

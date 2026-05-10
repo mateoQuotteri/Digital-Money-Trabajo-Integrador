@@ -1,0 +1,597 @@
+{
+  "info": {
+    "name": "Digital Money House — Sprint 3",
+    "_postman_id": "sprint3-digital-money-house",
+    "description": "Colección de pruebas para Sprint 3: Actividad de billetera, detalle de actividad e ingreso de dinero desde tarjeta.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8080", "type": "string" },
+    { "key": "token",    "value": "",                      "type": "string" },
+    { "key": "accountId","value": "",                      "type": "string" },
+    { "key": "cardId",   "value": "",                      "type": "string" },
+    { "key": "transferId","value": "",                     "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "0 — Setup (Login)",
+      "item": [
+        {
+          "name": "POST /users/login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.token) {",
+                  "    pm.collectionVariables.set('token', json.token);",
+                  "    console.log('Token guardado:', json.token);",
+                  "}",
+                  "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                  "pm.test('Token presente', function() { pm.expect(json.token).to.be.a('string'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"usuario@test.com\",\n  \"password\": \"Test1234!\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/users/login", "host": ["{{base_url}}"], "path": ["users", "login"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "1 — Listado de Actividad",
+      "item": [
+        {
+          "name": "TC-S3-001 — GET /accounts/{id}/activity — 200 OK",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                  "pm.test('Respuesta es array', function() { pm.expect(pm.response.json()).to.be.an('array'); });",
+                  "pm.test('Actividades ordenadas DESC por fecha', function() {",
+                  "    var data = pm.response.json();",
+                  "    if (data.length > 1) {",
+                  "        for (var i = 0; i < data.length - 1; i++) {",
+                  "            pm.expect(new Date(data[i].fecha)).to.be.at.least(new Date(data[i+1].fecha));",
+                  "        }",
+                  "    }",
+                  "});",
+                  "var data = pm.response.json();",
+                  "if (data.length > 0) { pm.collectionVariables.set('transferId', data[0].id); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/accounts/{{accountId}}/activity",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "{{accountId}}", "activity"]
+            }
+          }
+        },
+        {
+          "name": "TC-S3-002 — GET /accounts/{id}/activity — 403 Forbidden (cuenta ajena)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 403', function() { pm.response.to.have.status(403); });",
+                  "pm.test('Mensaje de error presente', function() { pm.expect(pm.response.json().error).to.be.a('string'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/accounts/9999/activity",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "9999", "activity"]
+            }
+          }
+        },
+        {
+          "name": "TC-S3-003 — GET /accounts/{id}/activity — 400 Bad Request (id inválido)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', function() { pm.response.to.have.status(400); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/accounts/0/activity",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "0", "activity"]
+            }
+          }
+        },
+        {
+          "name": "TC-S3-004 — GET /accounts/{id}/activity — 401 sin token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401', function() { pm.response.to.have.status(401); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/accounts/{{accountId}}/activity",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "{{accountId}}", "activity"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2 — Detalle de Actividad",
+      "item": [
+        {
+          "name": "TC-S3-005 — GET /accounts/{id}/activity/{transferId} — 200 OK",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test('Tiene campo id', function() { pm.expect(data.id).to.be.a('number'); });",
+                  "pm.test('Tiene campo monto', function() { pm.expect(data.monto).to.exist; });",
+                  "pm.test('Tiene campo tipo', function() { pm.expect(data.tipo).to.be.a('string'); });",
+                  "pm.test('Tiene campo fecha', function() { pm.expect(data.fecha).to.exist; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/accounts/{{accountId}}/activity/{{transferId}}",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "{{accountId}}", "activity", "{{transferId}}"]
+            }
+          }
+        },
+        {
+          "name": "TC-S3-006 — GET /accounts/{id}/activity/{transferId} — 404 transferId inexistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 404', function() { pm.response.to.have.status(404); });",
+                  "pm.test('Mensaje de error presente', function() { pm.expect(pm.response.json().error).to.be.a('string'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/accounts/{{accountId}}/activity/999999",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "{{accountId}}", "activity", "999999"]
+            }
+          }
+        },
+        {
+          "name": "TC-S3-007 — GET /accounts/{id}/activity/{transferId} — 403 cuenta ajena",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 403 o 404', function() {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([403, 404]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/accounts/9999/activity/1",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "9999", "activity", "1"]
+            }
+          }
+        },
+        {
+          "name": "TC-S3-008 — GET /accounts/{id}/activity/{transferId} — 401 sin token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401', function() { pm.response.to.have.status(401); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/accounts/{{accountId}}/activity/{{transferId}}",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "{{accountId}}", "activity", "{{transferId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3 — Listado de Tarjetas (GET /cards)",
+      "item": [
+        {
+          "name": "TC-S3-009 — GET /cards — 200 OK",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                  "pm.test('Respuesta es array', function() { pm.expect(pm.response.json()).to.be.an('array'); });",
+                  "var data = pm.response.json();",
+                  "if (data.length > 0) { pm.collectionVariables.set('cardId', data[0].id); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/cards", "host": ["{{base_url}}"], "path": ["cards"] }
+          }
+        },
+        {
+          "name": "TC-S3-010 — GET /cards — 401 sin token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401', function() { pm.response.to.have.status(401); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/cards", "host": ["{{base_url}}"], "path": ["cards"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4 — Ingreso de Dinero",
+      "item": [
+        {
+          "name": "TC-S3-011 — POST /accounts/{id}/transferences — 201 Created",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', function() { pm.response.to.have.status(201); });",
+                  "var data = pm.response.json();",
+                  "pm.test('Tiene id de transaccion', function() { pm.expect(data.id).to.be.a('number'); });",
+                  "pm.test('Tipo CREDITO', function() { pm.expect(data.tipo).to.eql('CREDITO'); });",
+                  "pm.test('Monto correcto', function() { pm.expect(parseFloat(data.monto)).to.eql(500.00); });",
+                  "pm.test('Tiene fecha', function() { pm.expect(data.fecha).to.exist; });",
+                  "pm.collectionVariables.set('transferId', data.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cardId\": {{cardId}},\n  \"amount\": 500.00\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/accounts/{{accountId}}/transferences",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "{{accountId}}", "transferences"]
+            }
+          }
+        },
+        {
+          "name": "TC-S3-012 — POST /accounts/{id}/transferences — 400 monto cero",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', function() { pm.response.to.have.status(400); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cardId\": {{cardId}},\n  \"amount\": 0\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/accounts/{{accountId}}/transferences",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "{{accountId}}", "transferences"]
+            }
+          }
+        },
+        {
+          "name": "TC-S3-013 — POST /accounts/{id}/transferences — 400 monto negativo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', function() { pm.response.to.have.status(400); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cardId\": {{cardId}},\n  \"amount\": -100\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/accounts/{{accountId}}/transferences",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "{{accountId}}", "transferences"]
+            }
+          }
+        },
+        {
+          "name": "TC-S3-014 — POST /accounts/{id}/transferences — 404 tarjeta inexistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 404', function() { pm.response.to.have.status(404); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cardId\": 999999,\n  \"amount\": 100\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/accounts/{{accountId}}/transferences",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "{{accountId}}", "transferences"]
+            }
+          }
+        },
+        {
+          "name": "TC-S3-015 — POST /accounts/{id}/transferences — 403 cuenta ajena",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 403', function() { pm.response.to.have.status(403); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cardId\": {{cardId}},\n  \"amount\": 100\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/accounts/9999/transferences",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "9999", "transferences"]
+            }
+          }
+        },
+        {
+          "name": "TC-S3-016 — Verificar saldo actualizado tras ingreso",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test('Saldo es mayor a cero', function() { pm.expect(parseFloat(data.saldo)).to.be.above(0); });",
+                  "console.log('Saldo actual:', data.saldo);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/accounts/{{accountId}}",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "{{accountId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5 — Flujo Completo (Workflow)",
+      "item": [
+        {
+          "name": "FLOW-01 — Ingresar dinero y verificar en actividad",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 - Transferencia creada', function() { pm.response.to.have.status(201); });",
+                  "var data = pm.response.json();",
+                  "pm.collectionVariables.set('transferId', data.id);",
+                  "console.log('Transfer ID guardado para verificar en actividad:', data.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cardId\": {{cardId}},\n  \"amount\": 1000.00\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/accounts/{{accountId}}/transferences",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "{{accountId}}", "transferences"]
+            }
+          }
+        },
+        {
+          "name": "FLOW-02 — Verificar que aparece en listado de actividad",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "var transferId = parseInt(pm.collectionVariables.get('transferId'));",
+                  "pm.test('La transferencia aparece en actividad', function() {",
+                  "    var found = data.some(function(t) { return t.id === transferId; });",
+                  "    pm.expect(found).to.be.true;",
+                  "});",
+                  "pm.test('Primera actividad es la mas reciente', function() {",
+                  "    pm.expect(data[0].id).to.eql(transferId);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/accounts/{{accountId}}/activity",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "{{accountId}}", "activity"]
+            }
+          }
+        },
+        {
+          "name": "FLOW-03 — Consultar detalle de la actividad recién creada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "var transferId = parseInt(pm.collectionVariables.get('transferId'));",
+                  "pm.test('ID coincide', function() { pm.expect(data.id).to.eql(transferId); });",
+                  "pm.test('Monto correcto', function() { pm.expect(parseFloat(data.monto)).to.eql(1000.00); });",
+                  "pm.test('Tipo CREDITO', function() { pm.expect(data.tipo).to.eql('CREDITO'); });",
+                  "pm.test('Descripcion menciona tarjeta', function() { pm.expect(data.descripcion).to.include('tarjeta'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/accounts/{{accountId}}/activity/{{transferId}}",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "{{accountId}}", "activity", "{{transferId}}"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+server:
+  port: 8888
+
+spring:
+  application:
+    name: config-server
+
+  cloud:
+    config:
+      server:
+        git:
+          uri: https://github.com/mateoQuotteri/digital-money-house-config.git
+          default-label: main
+          search-paths: "/"
+          timeout: 5
+          clone-on-start: true
+          refresh-rate: 30
+
+        default-application-name: application
+
+        encrypt:
+          enabled: false
+
+        accept-empty: true
+
+        health:
+          repositories:
+            git-repo:
+              name: digital-money-house-config
+              profiles: default
+              label: main
+
+  security:
+    user:
+      name: ${CONFIG_USER:admin}
+      password: ${CONFIG_PASSWORD:digital2024}
+      roles:
+        - ADMIN
+
+logging:
+  level:
+    org.springframework.cloud.config: DEBUG
+    org.eclipse.jgit: INFO
+    org.springframework.cloud.config.server: DEBUG
+    org.springframework.security: INFO
+    com.digitalhouse.digitalmoney: INFO
+
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,env,configprops,refresh,beans
+      base-path: /actuator
+
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+    refresh:
+      enabled: true
+
+  info:
+    env:
+      enabled: true
+    git:
+      mode: full
+
+config-server:
+  cache:
+    ttl: 300
+    max-size: 100
+
+  monitoring:
+    enabled: true
+    report-interval: 60
+
+  repository:
+    clone-timeout: 10
+    max-retries: 3
+    retry-delay: 2
+
+info:
+  app:
+    name: Digital Money House Config Server
+    description: Servidor de configuraci�n centralizada para microservicios
+    version: 1.0.0
+
+  config:
+    repository: https://github.com/mateoQuotteri/digital-money-house-config.git
+    profiles-supported:
+      - default
+      - dev
+      - prod
+    services-supported:
+      - user-service
+      - eureka-server
+      - account-service
+      - card-service
+      - transaction-service

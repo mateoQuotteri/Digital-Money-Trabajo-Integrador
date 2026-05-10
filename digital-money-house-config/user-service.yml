@@ -1,0 +1,138 @@
+# user-service.yml - Configuración centralizada
+
+server:
+  port: 8081
+  servlet:
+    context-path: 
+  error:
+    include-stacktrace: on-param
+    include-message: always
+
+spring:
+  application:
+    name: user-service
+  
+  datasource:
+    url: jdbc:h2:mem:userdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password: 
+    driver-class-name: org.h2.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 20000
+  
+  jpa:
+    hibernate:
+      ddl-auto: update
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: true
+        show_sql: true
+        use_sql_comments: true
+  
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+      settings:
+        web-allow-others: true
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+    registry-fetch-interval-seconds: 30
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
+    lease-renewal-interval-in-seconds: 30
+    lease-expiration-duration-in-seconds: 90
+
+jwt:
+  secret: digitalMoneyHouseSecretKeyForJWT2024MustBeLongEnoughForHS256Algorithm
+  expiration: 86400000
+  issuer: digital-money-house-user-service
+  header: Authorization
+  prefix: Bearer
+
+logging:
+  level:
+    com.digitalhouse.digitalmoney: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.springframework.web: DEBUG
+    com.netflix.eureka: INFO
+    com.netflix.discovery: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+springdoc:
+  api-docs:
+    path: /api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    operations-sorter: method
+    tags-sorter: alpha
+    display-request-duration: true
+  info:
+    title: Digital Money House - User Service API
+    description: API REST para gestión de usuarios, autenticación y autorización
+    version: 1.0.0
+    contact:
+      name: Digital House Team
+      email: support@digitalhouse.com
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,env
+  endpoint:
+    health:
+      show-details: always
+  info:
+    env:
+      enabled: true
+
+# Configuraciones de negocio específicas
+app:
+  security:
+    max-login-attempts: 5
+    lockout-duration-minutes: 15
+    password-min-length: 8
+  
+  account:
+    cvu-length: 22
+    alias-words-file: palabras-alias.txt
+    alias-pattern: "^[a-z]+\\.[a-z]+\\.[a-z]+$"
+  
+  validation:
+    dni-pattern: "^\\d{7,8}$"
+    phone-pattern: "^\\+?[1-9]\\d{8,14}$"
+
+cors:
+  allowed-origins: 
+    - http://localhost:3000
+    - http://localhost:4200
+    - https://digitalmoneyhousefront.vercel.app
+  allowed-methods:
+    - GET
+    - POST
+    - PUT
+    - PATCH
+    - DELETE
+    - OPTIONS
+  allowed-headers:
+    - "*"
+  allow-credentials: true

@@ -1,0 +1,1 @@
+org.springframework.context.ApplicationContextInitializer=com.user_service.Config.DotenvConfig
