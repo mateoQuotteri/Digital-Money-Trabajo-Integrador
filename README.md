@@ -4,6 +4,20 @@ Billetera digital desarrollada como trabajo integrador final, con arquitectura d
 
 ---
 
+## Links necesarios:
+## Config Server
+
+Repositorio del Config Server utilizado en el proyecto:
+
+🔗 https://github.com/mateoQuotteri/digital-money-house-config
+
+## Video (Youtube)
+
+Video explicativo del proyecto:
+
+🔗 https://youtu.be/qDrduwWnGME
+---
+
 ## Tabla de contenidos
 
 1. [Estructura del proyecto](#estructura-del-proyecto)
